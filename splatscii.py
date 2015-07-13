@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import random, curses
+import random
 from enum import Enum
 
 class Weapon(object):
@@ -37,8 +37,7 @@ class InkBlob(Projectile):
 
 class Team(object):
 	"""docstring for Team"""
-	def __init__(self, index: int, name: str, color: InkColor, spawn: Cell):#-> None:
-		self.index = index
+	def __init__(self, name: str, color: InkColor, spawn: Cell):#-> None:
 		self.name = name
 		self.color = color
 		self.spawn = spawn
@@ -52,7 +51,7 @@ class Inkling(object):
 		self.clothes = clothes
 		self.headgear = headgear
 		self.weapon = weapon
-		self.respawn()
+		self.respawn() # respawn will init hp, ink, etc
 	def take_hit(self, inkTeam: Team, size):#-> None:
 		self.hp -= size * self.get_defense_modifier()
 		if self.hp <= 0.0:
@@ -80,31 +79,32 @@ class CellType(Enum):
 
 class Cell(object):
 	"""docstring for Cell"""
-	def __init__(self, row: int, col: int, cellType: CellType, numTeams: int):#-> None:
+	def __init__(self, row: int, col: int, cellType: CellType, teams: list):#-> None:
 		self.row = row
 		self.col = col
-		self.inkLevels = [0.0 for i in range(0,numTeams)] # array of floats of ink levels for each color/team; sum ≤ 1 (?)
+		self.inkLevels = {t: 0.0 for t in teams}
 		self.cellType = cellType
 	def take_hit(self, inkTeam: Team, size):#-> None:
-		self.inkLevels[inkTeam.index] += size
-		levelSum = sum(self.inkLevels)
-		if self.inkLevels[inkTeam.index] >= 1.0:
-			self.inkLevels[inkTeam.index] = 1.0
-			for i in range(len(self.inkLevels)):
-				if i != inkTeam.index:
-					self.inkLevels[i] = 0.0
+		self.inkLevels[inkTeam] += size
+		levelSum = sum(self.inkLevels.values())
+		if self.inkLevels[inkTeam] >= 1.0:
+			self.inkLevels[inkTeam] = 1.0
+			for t in self.inkLevels:
+				if t != inkTeam:
+					self.inkLevels[t] = 0.0
 		elif levelSum > 1.0:
-			otherSum = sum([self.inkLevels[i] for i in range(len(self.inkLevels)) if i != inkTeam.index])
-			for i in range(len(self.inkLevels)):
-				if i != inkTeam.index:
-					self.inkLevels[i] /= otherSum
-					self.inkLevels[i] *= 1.0 - self.inkLevels
+			otherSum = sum([self.inkLevels[t] for t in inkLevels if t != inkTeam])
+			for t in inkLevels:
+				if t != inkTeam:
+					self.inkLevels[t] /= otherSum
+					self.inkLevels[t] *= 1.0 - self.inkLevels
 
 class Map(object):
 	"""docstring for Map"""
-	_default_cells = [[Cell(row, col, CellType.floor, numTeams) for col in range(0,80)] for row in range(0,24)]
-	def __init__(self, name: str, numTeams: int, cells: list = _default_cells):#-> None:
+	def __init__(self, name: str, teams: list, cells: list = None):#-> None:
 		self.name = name
-		self.numTeams = numTeams
+		self.teams = teams
 		self.cells = cells
+		if cells is None:
+			cells = [[Cell(row, col, CellType.floor, teams) for col in range(0,80)] for row in range(0,24)]
 
